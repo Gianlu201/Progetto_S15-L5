@@ -1,0 +1,403 @@
+/* Interpretazione per la strutturazione dell'esercizio: l'esercizio si presta a diverse interpretazioni, inizialmente avevo
+	ipotizzato una relazione in cui ogni anagrafica poteva essere collegata ad uno o più verbali (relazione uno a molti),
+	mentre ogni verbale poteva contenere una sola violazione (relazione uno a uno).Dopo aver parlato con lei e cercato in rete,
+	siamo giunti alla conclusione che ogni verbale può contenere più violazioni e quindi la struttura iniziale è stata modificata
+	per rendere possibile una relazione molti a molti tra i verbali e le violazioni possibili. Ciò ha reso necessaria la
+	creazione di una quarta tabella che riportasse questa relazione (questo ragionamento ha reso la query 14 un po' "strana"
+	nei risultati). Seguendo questo ragionamento ho modificato il nome della colonna da 'DataViolazione' a 'DataVerbale' e
+	cercato di rendere il tutto coerente al ragionamento, anche se la struttura base dell'esercizio resta alquanto ambigua */
+
+/* All'interno del file, tra gli esercizi, ci sono anche varianti delle query richieste in cui vengono mostrati in modo analogo
+	alla richiesta anche ulteriori dati, queste varianti sono state fatta per testare e fare un po' di pratica con la sintassi
+	e il linguaggio */
+
+
+-- Creazione del Database
+CREATE DATABASE Progetto_S15_L5
+
+USE Progetto_S15_L5;
+
+
+-- Creazione delle tabelle
+CREATE TABLE Anagrafica (
+	IdAnagrafica UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWSEQUENTIALID(),
+	Nome NVARCHAR(50) NOT NULL,
+	Cognome NVARCHAR(50) NOT NULL,
+	Indirizzo NVARCHAR(100) NOT NULL,
+	Città NVARCHAR(50) NOT NULL,
+	CAP NVARCHAR(5) NOT NULL,
+	CodFisc NVARCHAR(17) NOT NULL UNIQUE,
+	CONSTRAINT CK_cap CHECK (ISNUMERIC(CAP) = 1)
+);
+
+CREATE TABLE TipoViolazione (
+	IdViolazione UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWSEQUENTIALID(),
+	Descrizione NVARCHAR(2000) NOT NULL
+);
+
+CREATE TABLE Verbale (
+	IdVerbale UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWSEQUENTIALID(),
+	DataVerbale DATE NOT NULL,
+	IndirizzoViolazione NVARCHAR(100) NOT NULL,
+	NominativoAgente NVARCHAR(50) NOT NULL,
+	DataTrascrizioneVerbale DATE NOT NULL DEFAULT CONVERT(DATE, GETDATE()),
+	Importo DECIMAL(7,2) NOT NULL,
+	DecurtamentoPunti INT NOT NULL,
+	IdAnagrafica UNIQUEIDENTIFIER NOT NULL,
+	CONSTRAINT CK_importo CHECK (Importo > 0),
+	CONSTRAINT CK_decurtamentoPunti CHECK (DecurtamentoPunti > 0),
+	CONSTRAINT FK_Verbale_Anagrafica FOREIGN KEY (IdAnagrafica) REFERENCES Anagrafica(IdAnagrafica),
+);
+
+CREATE TABLE RelazioneVerbaleViolazione (
+	IdVerbale UNIQUEIDENTIFIER NOT NULL,
+	IdViolazione UNIQUEIDENTIFIER NOT NULL,
+	CONSTRAINT PK_IdVerbale_IdViolazione PRIMARY KEY (IdVerbale, IdViolazione),
+	CONSTRAINT FK_IdVerbale FOREIGN KEY (IdVerbale) REFERENCES Verbale(IdVerbale),
+	CONSTRAINT FK_IdViolazione FOREIGN KEY (IdViolazione) REFERENCES TipoViolazione(IdViolazione),
+);
+
+
+-- POPOLAZIONE DELLE TABELLE
+--   Tabella Anagrafica
+INSERT INTO Anagrafica
+VALUES (NewId(), 'Giulia', 'Rossi', 'Via Dante Alighieri 10', 'Milano', '20100', 'RSSGLI90A01F205X');
+
+INSERT INTO Anagrafica
+VALUES (NewId(), 'Marco', 'Bianchi', 'Corso Italia 15', 'Roma', '00100', 'BNCMRC85M01H501Y');
+
+INSERT INTO Anagrafica
+VALUES (NewId(), 'Alessandra', 'Verdi', 'Via Roma 25', 'Torino', '10100', 'VRDLSA72D55L219P');
+
+INSERT INTO Anagrafica
+VALUES (NewId(), 'Luca', 'Neri', 'Via Giuseppe Mazzini 40', 'Firenze', '50100', 'NRILCU85C01D612N');
+
+INSERT INTO Anagrafica
+VALUES (NewId(), 'Laura', 'Gialli', 'Piazza del Duomo 5', 'Napoli', '80100', 'GLLLRA90A01F839T');
+
+INSERT INTO Anagrafica
+VALUES (NewId(), 'Andrea', 'Blu', 'Via San Petronio 22', 'Bologna', '40100', 'BLNDRE80B01L219W');
+
+INSERT INTO Anagrafica
+VALUES (NewId(), 'Sofia', 'Grigi', 'Via Libertà 30', 'Palermo', '90100', 'GRGSFA96C41H501D');
+
+INSERT INTO Anagrafica
+VALUES (NewId(), 'Paolo', 'Galli', 'Via Etnea 50', 'Catania', '95100', 'GLLPLA84M01H501Q');
+
+INSERT INTO Anagrafica
+VALUES (NewId(), 'Martina', 'Arancio', 'Viale Giuseppe Mazzini 12', 'Verona', '37100', 'RNCMTN92A41F205X');
+
+INSERT INTO Anagrafica
+VALUES (NewId(), 'Francesco', 'Marroni', 'Via XX Settembre 60', 'Genova', '16100', 'MRNFRN75C01L219B');
+
+
+--   Tabella TipoViolazione
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Eccesso di velocità: Multa per aver superato il limite di velocità di 20 km/h sulla Via Roma, zona residenziale. La velocità rilevata era di 80 km/h anziché 60 km/h, causando un rischio per pedoni e ciclisti');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Parcheggio in divieto di sosta: Sanzione per aver parcheggiato in zona a traffico limitato in Piazza del Duomo senza autorizzazione, ostruendo il passaggio di mezzi di emergenza.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Mancato uso delle cinture di sicurezza: Multa per non aver indossato la cintura di sicurezza durante il viaggio in autostrada. Il veicolo è stato fermato durante un controllo di routine.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Guida con cellulare: Multa per l’utilizzo del cellulare durante la guida su Via Dante, creando potenziale distrazione e pericolo per gli altri automobilisti.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Soste abusive su strisce pedonali: Sanzione per aver parcheggiato il veicolo sopra le strisce pedonali in Corso Italia, impedendo il normale attraversamento dei pedoni.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Incrocio con semaforo rosso: Multa per aver attraversato un incrocio con semaforo rosso su Via Giuseppe Mazzini, violando il codice della strada e mettendo in pericolo la sicurezza stradale.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Guida senza patente: Sanzione per guida senza patente di guida, accertata durante un controllo su Viale Giuseppe Mazzini. Il conducente non era in possesso di documenti validi.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Transito in area pedonale: Multa per aver circolato con il veicolo in area pedonale in Via Roma durante orario di divieto, mettendo a rischio la sicurezza dei pedoni.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Spostamento del veicolo durante una sosta vietata: Sanzione per aver spostato un veicolo durante una sosta vietata, creando ostacoli al traffico e rischi per la circolazione su Corso Italia.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Mancata revisione del veicolo: Multa per circolazione con un veicolo non revisionato, scaduto da oltre sei mesi, su Via Etnea. La mancata revisione compromette la sicurezza del mezzo e la protezione ambientale.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Mancato rispetto della precedenza: Sanzione per non aver dato la precedenza al veicolo proveniente da destra su un incrocio non regolato da semaforo in Via San Giovanni. Incidente evitato ha creato notevole pericolo per gli altri utenti della strada.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Uso improprio delle corsie: Multa per aver viaggiato sulla corsia di emergenza in autostrada per oltre 500 metri, senza necessità, ostacolando il passaggio dei veicoli di soccorso.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Eccesso di velocità in zona scolastica: Sanzione per aver superato il limite di velocità di 30 km/h nella zona residenziale di Via Marconi, nelle vicinanze di una scuola, dove i bambini stavano attraversando la strada.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Fermata in doppia fila: Multa per aver lasciato il veicolo in doppia fila su Viale Trento, creando rallentamenti al traffico e impedendo il passaggio di altri veicoli.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Guida sotto influenza di sostanze alcoliche: Multa per guida in stato di ebbrezza, con un tasso alcolemico superiore al limite consentito di legge, rilevato durante un controllo su Via Nazionale.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Mancato rispetto del limite di altezza: Sanzione per aver percorso un tunnel con un veicolo che superava altezza massima consentita di 3 metri, creando rischio di danneggiare la struttura e intralciare il traffico.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Mancato fermo al posto di blocco: Multa per non essersi fermati a un posto di blocco della polizia in Corso Vittorio Emanuele II, violando le normative di sicurezza stradale e aggravando la situazione con una fuga temporanea.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Violazione del divieto di transito: Sanzione per aver percorso un tratto di strada in cui il transito era vietato, ignorando il cartello di divieto in Via Roma, in una zona pedonale e a traffico limitato.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Transito con veicolo non assicurato: Multa per circolazione con un veicolo privo di assicurazione obbligatoria, accertato durante un controllo su Via Milano, mettendo a rischio la sicurezza stradale.');
+
+INSERT INTO TipoViolazione
+VALUES (NEWID(), 'Uso del veicolo per finalità diverse da quelle consentite: Sanzione per aver utilizzato un veicolo commerciale per trasporto di persone, violando le normative riguardanti il trasporto pubblico e la sicurezza stradale.');
+
+--   Tabella Verbale
+INSERT INTO Verbale
+VALUES (NEWID(), '2025-02-10', 'Via Dante Alighieri 10, Milano', 'SGT. Luca Ferri', '2025-02-12', 150, 2, '7380417D-9A44-4B1B-96FB-FF31488B5628');
+
+INSERT INTO Verbale
+VALUES (NEWID(), '2024-04-12', 'Corso Italia 15, Roma', 'Cst. Maria Bianchi', '2024-04-20', 120, 3, '7380417D-9A44-4B1B-96FB-FF31488B5628');
+
+INSERT INTO Verbale
+VALUES (NEWID(), '2024-05-20', 'Via Roma 25, Torino', 'Cpl. Alessandro Verdi', '2024-05-23', 200, 4, 'AB4D17DB-F1F7-431A-85B4-3278E4395024');
+
+INSERT INTO Verbale
+VALUES (NEWID(), '2023-02-22', 'Via Giuseppe Mazzini 40, Firenze', 'Cst. Chiara Neri', '2023-02-27', 180, 3, 'B2490619-20B1-443F-A323-6E26E91E6F6E');
+
+INSERT INTO Verbale
+VALUES (NEWID(), '2024-03-01', 'Piazza del Duomo 5, Napoli', 'SGT. Paolo Gialli', '2024-03-06', 100, 1, 'A4EBFF23-952D-48BB-A65D-8DA5E818C022');
+
+INSERT INTO Verbale
+VALUES (NEWID(), '2024-07-11', 'Via San Petronio 22, Bologna', 'Cpl. Andrea Blu', '2024-07-15', 220, 4, '59185603-5EE1-4BA0-89C4-94A2AF575A82');
+
+INSERT INTO Verbale
+VALUES (NEWID(), '2024-01-09', 'Via Libertà 30, Palermo', 'Cst. Sofia Grigi', '2024-01-13', 160, 2, '59185603-5EE1-4BA0-89C4-94A2AF575A82');
+
+INSERT INTO Verbale
+VALUES (NEWID(), '2023-10-20', 'Via Etnea 50, Catania', 'SGT. Paolo Galli', '2023-10-25', 140, 3, '73F3ED80-C5DE-4C4A-A87B-C39D692C1446');
+
+INSERT INTO Verbale
+VALUES (NEWID(), '2024-12-25', 'Viale Giuseppe Mazzini 12, Verona', 'Cpl. Martina Arancio', '2024-12-29', 180, 3, 'F924DB1A-29CE-4DDD-8E66-DC20394E1F34');
+
+INSERT INTO Verbale
+VALUES (NEWID(), '2025-01-11', 'Via XX Settembre 60, Genova', 'Cst. Francesco Marroni', '2025-01-15', 150, 2, '64373DFF-19FE-4F27-AF81-F49F36501BAE');
+
+INSERT INTO Verbale
+VALUES (NEWID(), '2024-04-15', 'Via San Giovanni 45, Milano', 'Cst. Laura Rossi', '2024-04-18', 250, 5, '5F39BED5-BF99-4599-AB34-85B5FFF62417');
+
+INSERT INTO Verbale
+VALUES (NEWID(), '2025-02-10', 'Via Nazionale 10, Roma', 'SGT. Marco Ferrara', '2025-02-14', 350, 6, '6FF4E02A-6164-45CD-92F9-7B9BDC57D7E0');
+
+INSERT INTO Verbale
+VALUES (NEWID(), '2009-04-10', 'Via Della Repubblica 32, Roma', 'SGT. Mattia Rospo', '2009-04-14', 60, 2, '6FF4E02A-6164-45CD-92F9-7B9BDC57D7E0');
+
+INSERT INTO Verbale
+VALUES (NEWID(), '2009-05-20', 'Via Nazionale 2, Genova', 'Cst. Francesco Marroni', '2009-05-25', 530, 8, '73F3ED80-C5DE-4C4A-A87B-C39D692C1446');
+
+--   Tabella RelazioneVerbaleViolazione
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('CEB874C0-D731-4F77-9B88-19B3D63FA766', '6E253FBD-31B6-4E62-A74C-00679F0AB1C3');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('CEB874C0-D731-4F77-9B88-19B3D63FA766', 'DB84A569-68F9-45C1-97D6-C9F3C1B18C55');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('CFA60A66-610A-414E-AC15-25590FDC9F42', '72024EE1-36C6-430C-958C-1082957E604B');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('CFA60A66-610A-414E-AC15-25590FDC9F42', '5B0C745F-5BB1-4EF5-89C8-83A4FE2E4CE1');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('DBAD30B1-CE88-422E-866E-4104EDD4205E', '6E253FBD-31B6-4E62-A74C-00679F0AB1C3');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('E2922F19-6A11-4C0D-A7E4-54BFCA29B496', '2CFB9F95-6198-4B88-879E-2EBD0AED733E');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('E1C38B72-2563-4EF4-AB5F-61EE425BB9D7', '81BB9C8A-F85A-454B-BE77-5C55E06BD552');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('EECA0954-6217-439A-BFB2-7373DA211E98', '60093F5C-EDB8-49B1-99F2-1E13729E5E54');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('1F42E277-C4AA-46E6-B80C-785081E7769B', '62C20D25-2140-4C65-96CA-74ACBADE17E7');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('1F42E277-C4AA-46E6-B80C-785081E7769B', '227E7325-49AC-4100-9076-842A6D6A2841');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('1F42E277-C4AA-46E6-B80C-785081E7769B', '775DDA4A-F46B-48D8-B05B-DEFAEB6DA946');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('31021983-E124-4BE9-AC12-90596D38297A', '1765429A-A462-44A9-A414-4FACC897FD25');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('DCA725BF-F57C-450E-88D2-AF295E1B6077', 'F956363C-9E19-47D4-9FAE-EF7FE954FE76');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('21D213AE-7A41-469F-945C-B010FDCC12DA', '66D63944-5704-4E06-AE7A-F4F83F25844F');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('EDFAA7F2-4338-4CF9-A175-BF1C67253A0B', 'CE0C3BDD-3B8F-4C91-BBBC-EE6745B4F18C');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('1431630D-4348-432D-BC53-CB5E049D99EF', 'B4C04A96-4912-46A9-A7C8-ADF8F2C40C42');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('1431630D-4348-432D-BC53-CB5E049D99EF', '29E939CC-F9ED-4F75-B751-6C4619015F76');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('96CDAC3A-2B32-41B6-8C48-F3393F965874', 'DB84A569-68F9-45C1-97D6-C9F3C1B18C55');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('C3A8EF7F-1525-4E6B-98AC-4A309996614D', '775DDA4A-F46B-48D8-B05B-DEFAEB6DA946');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('85A06C79-29AD-434B-AC94-057E3041073D', 'B4C04A96-4912-46A9-A7C8-ADF8F2C40C42');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('85A06C79-29AD-434B-AC94-057E3041073D', 'F50361C8-F1CF-4256-8C0A-E09BC3006DC3');
+
+INSERT INTO RelazioneVerbaleViolazione
+VALUES ('85A06C79-29AD-434B-AC94-057E3041073D', '6E253FBD-31B6-4E62-A74C-00679F0AB1C3');
+
+
+
+
+
+-- INIZIO ESERCIZI
+
+--   Esercizio 1
+SELECT COUNT(DataTrascrizioneVerbale) as NumeroVerbaliTrascritti FROM Verbale;
+
+
+--   Esercizio 2
+SELECT COUNT(DataTrascrizioneVerbale) as NumeroVerbaliTrascritti FROM Verbale GROUP BY IdAnagrafica;
+
+/* Variante che mostra i nomi accanto (JOIN) ordinando per Cognome */
+SELECT MAX(A.Cognome) as Cognome, MAX(A.Nome) as Nome, MAX(A.CodFisc) as CodiceFiscale, COUNT(Ve.DataTrascrizioneVerbale) as NumeroVerbaliTrascritti
+FROM Anagrafica as A
+LEFT JOIN
+Verbale as Ve ON
+A.IdAnagrafica = Ve.IdAnagrafica
+GROUP BY Ve.IdAnagrafica
+ORDER BY MAX(A.Cognome);
+
+
+--   Esercizio 3
+SELECT COUNT(IdVerbale) as NumeroVerbaliTrascritti FROM RelazioneVerbaleViolazione GROUP BY IdViolazione;
+
+/* Variante che mostra la descrizione della violazione accanto (JOIN) mostrato il ordine Decrescente */
+SELECT MAX(Vi.Descrizione) as DescrizioneViolazione, COUNT(Rel.IdVerbale) as NumeroVerbaliTrascritti
+FROM RelazioneVerbaleViolazione as Rel
+RIGHT JOIN
+TipoViolazione as Vi ON
+Rel.IdViolazione = Vi.IdViolazione
+GROUP BY Rel.IdViolazione
+ORDER BY COUNT(Rel.IdVerbale) DESC;
+
+
+--   Esercizio 4
+SELECT SUM(DecurtamentoPunti) as TotalePuntiDecurtati FROM Verbale GROUP BY IdAnagrafica;
+
+/* Variante che mostra il Cognome, il Nome e il CodiceFiscale accanto (JOIN) mostrato in ordine Decrescente */
+SELECT MAX(A.Cognome) as Cognome, MAX(A.Nome) as Nome, MAX(A.CodFisc) as CodiceFiscale, SUM(Ve.DecurtamentoPunti) as TotalePuntiDecurtati
+FROM Anagrafica as A
+RIGHT JOIN
+Verbale as Ve ON
+A.IdAnagrafica = Ve.IdAnagrafica
+GROUP BY Ve.IdAnagrafica
+ORDER BY SUM(Ve.DecurtamentoPunti) DESC;
+
+
+--   Esercizio 5
+SELECT A.Cognome, A.Nome, Ve.DataVerbale, Ve.IndirizzoViolazione, Ve.Importo, Ve.DecurtamentoPunti
+FROM Anagrafica as A
+LEFT JOIN
+Verbale as Ve ON
+A.IdAnagrafica = Ve.IdAnagrafica
+WHERE A.Città = 'Palermo';
+
+
+--   Esercizio 6
+SELECT A.Cognome, A.Nome, Ve.DataVerbale, Ve.Importo, Ve.DecurtamentoPunti
+FROM Anagrafica as A
+INNER JOIN
+Verbale as Ve ON
+A.IdAnagrafica = Ve.IdAnagrafica
+WHERE Ve.DataVerbale BETWEEN '2009-02-01' AND '2009-07-01';
+
+
+--   Esercizio 7
+SELECT SUM(Importo) as TotaleImporto FROM Verbale GROUP BY IdAnagrafica;
+
+/* Variante che mostra il Cognome, il Nome e il CodiceFiscale accanto (JOIN) mostrato in ordine Decrescente */
+SELECT MAX(A.Cognome) as Cognome, MAX(A.Nome) as Nome, MAX(A.CodFisc) as CodiceFiscale, SUM(Ve.Importo) as TotaleImporto
+FROM Verbale as Ve
+LEFT JOIN
+Anagrafica as A ON
+Ve.IdAnagrafica = A.IdAnagrafica
+GROUP BY Ve.IdAnagrafica
+ORDER BY SUM(Ve.Importo) DESC;
+
+
+--   Esercizio 8
+SELECT * FROM Anagrafica WHERE Città = 'Palermo';
+
+
+--   Esercizio 9
+SELECT DataVerbale, Importo, DecurtamentoPunti FROM Verbale WHERE DataVerbale = '2024-04-15';
+
+/* Variante che mostra il nome accanto (JOIN) */
+SELECT A.Cognome, A.Nome, A.CodFisc, Ve.DataVerbale, Ve.Importo, Ve.DecurtamentoPunti
+FROM Verbale as Ve
+INNER JOIN
+Anagrafica as A ON
+Ve.IdAnagrafica = A.IdAnagrafica
+WHERE Ve.DataVerbale = '2024-04-15';
+
+
+--   Esercizio 10
+SELECT NominativoAgente, COUNT(*) as NumeroViolazioniRiportate FROM Verbale GROUP BY NominativoAgente;
+
+
+--   Esercizio 11
+SELECT A.Cognome, A.Nome, A.Indirizzo, Ve.DataVerbale, Ve.Importo, Ve.DecurtamentoPunti
+FROM Anagrafica as A
+INNER JOIN
+Verbale as Ve ON
+A.IdAnagrafica = Ve.IdAnagrafica
+WHERE Ve.DecurtamentoPunti > 5;
+
+
+--   Esercizio 12
+SELECT A.Cognome, A.Nome, A.Indirizzo, Ve.DataVerbale, Ve.Importo, Ve.DecurtamentoPunti
+FROM Anagrafica as A
+INNER JOIN
+Verbale as Ve ON
+A.IdAnagrafica = Ve.IdAnagrafica
+WHERE Ve.Importo > 400;
+
+
+--   EXTRA Esercizio 13
+SELECT NominativoAgente, COUNT(*) as NumeroVerbali, SUM(Importo) as ImportoTotale
+FROM Verbale
+GROUP BY NominativoAgente
+ORDER BY SUM(Importo) DESC;
+
+
+/* N.B. (Es.14) Eseguendo la query escono numeri "strani" ma giusti in quanto la media viene fatta seguendo il valore
+	dell'importo del verbale a cui possono essere assegnate più violazioni, tuttavia ogni violazione dovrebbe
+	concorrere solo ad una parte dell'Importo di un verbale nel caso in cui quest'ultimo ne presenti diverse*/
+
+--   EXTRA Esercizio 14
+SELECT Vi.Descrizione, FORMAT(AVG(Ve.Importo), 'C', 'it-it') as MediaImporto
+FROM TipoViolazione as Vi
+RIGHT JOIN
+RelazioneVerbaleViolazione as Rel ON
+Vi.IdViolazione = Rel.IdViolazione
+INNER JOIN
+Verbale as Ve ON
+Rel.IdVerbale = Ve.IdVerbale
+GROUP BY Rel.IdViolazione, Vi.Descrizione;
